@@ -26,7 +26,7 @@ func TestEventEmitter(t *testing.T) {
 		{
 			name: "singleListenerWithoutArguments",
 			args: []args{
-				args{
+				{
 					eventName: "event_a",
 					eventHandler: func(args ...interface{}) {
 						resultMap["event_a"]++
