@@ -45,7 +45,7 @@ func TestEventEmitter(t *testing.T) {
 				emitter.On(args.eventName, args.eventHandler)
 				emitter.Emit(args.eventName, args.eventArgs...)
 			}
-			time.Sleep(time.Nanosecond)
+			time.Sleep(time.Millisecond)
 			for k, v := range tt.result {
 				if resultMap[k] != v {
 					t.Errorf("event %s's result does not match, %d, %d", k, resultMap[k], v)
