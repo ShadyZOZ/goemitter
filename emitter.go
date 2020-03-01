@@ -33,13 +33,7 @@ func (emitter *EventEmitter) Emit(eventName string, args ...interface{}) bool {
 
 // EventNames Returns events for registered listeners.
 func (emitter *EventEmitter) EventNames() []string {
-	eventNames := make([]string, len(emitter.handlerMap))
-	i := 0
-	for k := range emitter.handlerMap {
-		eventNames[i] = k
-		i++
-	}
-	return eventNames
+	return getHandlerMapKeys(emitter.handlerMap)
 }
 
 // // GetMaxListeners Returns the current max listener value for the EventEmitter which is either set by emitter.setMaxListeners(n) or defaults to EventEmitter.defaultMaxListeners.
@@ -94,6 +88,15 @@ func (emitter *EventEmitter) PrependOnceListener(eventName string, listener func
 // It is bad practice to remove listeners added elsewhere in the code, particularly when the EventEmitter instance was created by some other component or module (e.g. sockets or file streams).
 // Returns a reference to the EventEmitter, so that calls can be chained.
 func (emitter *EventEmitter) RemoveAllListeners(eventNames []string) *EventEmitter {
+	if len(eventNames) == 0 {
+		eventNames = getHandlerMapKeys(emitter.handlerMap)
+	}
+	for _, eventName := range eventNames {
+		for i := range emitter.handlerMap[eventName] {
+			emitter.handlerMap[eventName][i] = nil
+		}
+		delete(emitter.handlerMap, eventName)
+	}
 	return emitter
 }
 
@@ -139,4 +142,17 @@ func deleteFromListeners(a []func(...interface{}), i int) []func(...interface{})
 
 func getListenerFunc(listener func(...interface{})) *runtime.Func {
 	return runtime.FuncForPC(reflect.ValueOf(listener).Pointer())
+}
+
+func getHandlerMapKeys(handlerMap map[string][]func(...interface{})) []string {
+	if len(handlerMap) == 0 {
+		return nil
+	}
+	keys := make([]string, len(handlerMap))
+	i := 0
+	for k := range handlerMap {
+		keys[i] = k
+		i++
+	}
+	return keys
 }

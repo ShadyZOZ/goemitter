@@ -140,6 +140,37 @@ func TestEventEmitter(t *testing.T) {
 		})
 	})
 
+	Convey("Test EventEmitter.RemoveAllListeners", t, func() {
+		Convey("Should work with nil eventNames passed in", func() {
+			emitter := MyEmitter{}
+			dummyHandler := func(...interface{}) {}
+			emitter.On("event_a", dummyHandler)
+			emitter.On("event_b", dummyHandler)
+			emitter.On("event_b", dummyHandler)
+			So(emitter.ListenerCount("event_a"), ShouldEqual, 1)
+			So(emitter.ListenerCount("event_b"), ShouldEqual, 2)
+			emitter.RemoveAllListeners(nil)
+			So(emitter.ListenerCount("event_a"), ShouldEqual, 0)
+			So(emitter.ListenerCount("event_b"), ShouldEqual, 0)
+		})
+
+		Convey("Should work with eventNames", func() {
+			emitter := MyEmitter{}
+			dummyHandler := func(...interface{}) {}
+			emitter.On("event_a", dummyHandler)
+			emitter.On("event_b", dummyHandler)
+			emitter.On("event_b", dummyHandler)
+			emitter.On("event_c", dummyHandler)
+			So(emitter.ListenerCount("event_a"), ShouldEqual, 1)
+			So(emitter.ListenerCount("event_b"), ShouldEqual, 2)
+			So(emitter.ListenerCount("event_c"), ShouldEqual, 1)
+			emitter.RemoveAllListeners([]string{"event_a", "event_b"})
+			So(emitter.ListenerCount("event_a"), ShouldEqual, 0)
+			So(emitter.ListenerCount("event_b"), ShouldEqual, 0)
+			So(emitter.ListenerCount("event_c"), ShouldEqual, 1)
+		})
+	})
+
 	Convey("Test EventEmitter.RemoveListener", t, func() {
 		Convey("Should work with 1 listener", func() {
 			emitter := MyEmitter{}
