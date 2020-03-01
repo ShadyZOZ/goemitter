@@ -53,18 +53,11 @@ func (emitter *EventEmitter) Listeners(eventName string) []func(...interface{}) 
 	return listeners
 }
 
-// On Adds the listener function to the end of the listeners array for the event named eventName. No checks are made to see if the listener has already been added. Multiple calls passing the same combination of eventName and listener will result in the listener being added, and called, multiple times.
+// On Adds the listener function to the end of the listeners array for the event named eventName.
+// No checks are made to see if the listener has already been added.
+// Multiple calls passing the same combination of eventName and listener will result in the listener being added, and called, multiple times.
 func (emitter *EventEmitter) On(eventName string, listener func(...interface{})) *EventEmitter {
-	if listener == nil {
-		return emitter
-	}
-	emitter.mutex.Lock()
-	defer emitter.mutex.Unlock()
-	if emitter.handlerMap == nil {
-		emitter.handlerMap = make(map[string][]func(...interface{}))
-	}
-	emitter.handlerMap[eventName] = append(emitter.handlerMap[eventName], listener)
-	return emitter
+	return emitter.addListener(eventName, listener, false)
 }
 
 // Off Alias for RemoveListener().
@@ -73,15 +66,18 @@ func (emitter *EventEmitter) Off(eventName string, listener func(...interface{})
 }
 
 // Once Adds a one-time listener function for the event named eventName. The next time eventName is triggered, this listener is removed and then invoked.
-func (emitter *EventEmitter) Once(eventName string, listener func(...interface{})) {
+func (emitter *EventEmitter) Once(eventName string, listener func(...interface{})) *EventEmitter {
+	return emitter
 }
 
 // PrependListener Adds the listener function to the beginning of the listeners array for the event named eventName. No checks are made to see if the listener has already been added. Multiple calls passing the same combination of eventName and listener will result in the listener being added, and called, multiple times.
-func (emitter *EventEmitter) PrependListener(eventName string, listener func(...interface{})) {
+func (emitter *EventEmitter) PrependListener(eventName string, listener func(...interface{})) *EventEmitter {
+	return emitter.addListener(eventName, listener, true)
 }
 
 // PrependOnceListener Adds a one-time listener function for the event named eventName to the beginning of the listeners array. The next time eventName is triggered, this listener is removed, and then invoked.
-func (emitter *EventEmitter) PrependOnceListener(eventName string, listener func(...interface{})) {
+func (emitter *EventEmitter) PrependOnceListener(eventName string, listener func(...interface{})) *EventEmitter {
+	return emitter
 }
 
 // RemoveAllListeners Removes all listeners, or those of the specified eventName.
@@ -129,6 +125,23 @@ func (emitter *EventEmitter) SetMaxListeners(n int) {
 
 // RawListeners Returns a copy of the array of listeners for the event named eventName, including any wrappers (such as those created by .once()).
 func (emitter *EventEmitter) RawListeners(eventName string) {
+}
+
+func (emitter *EventEmitter) addListener(eventName string, listener func(...interface{}), prepend bool) *EventEmitter {
+	if listener == nil {
+		return emitter
+	}
+	emitter.mutex.Lock()
+	defer emitter.mutex.Unlock()
+	if emitter.handlerMap == nil {
+		emitter.handlerMap = make(map[string][]func(...interface{}))
+	}
+	if prepend {
+		emitter.handlerMap[eventName] = append([]func(...interface{}){listener}, emitter.handlerMap[eventName]...)
+	} else {
+		emitter.handlerMap[eventName] = append(emitter.handlerMap[eventName], listener)
+	}
+	return emitter
 }
 
 func deleteFromListeners(a []func(...interface{}), i int) []func(...interface{}) {

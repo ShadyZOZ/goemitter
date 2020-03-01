@@ -51,6 +51,30 @@ func TestEventEmitter(t *testing.T) {
 			emitter.On("event_a", nil)
 			emitter.Emit("event_a", 20)
 		})
+
+		Convey("Should work in order", func() {
+			emitter := MyEmitter{}
+			var (
+				result []int
+				wg     sync.WaitGroup
+			)
+			listener1 := func(args ...interface{}) {
+				result = append(result, 1)
+				wg.Done()
+			}
+			listener2 := func(args ...interface{}) {
+				result = append(result, 2)
+				wg.Done()
+			}
+			emitter.On("event_a", listener1)
+			emitter.On("event_a", listener2)
+			wg.Add(2)
+			emitter.Emit("event_a", 20)
+			wg.Wait()
+			So(result, ShouldHaveLength, 2)
+			So(result[0], ShouldEqual, 1)
+			So(result[1], ShouldEqual, 2)
+		})
 	})
 
 	Convey("Test EventEmitter.AddListener", t, func() {
@@ -137,6 +161,32 @@ func TestEventEmitter(t *testing.T) {
 			emitter.On("event_a", dummyHandler)
 			emitter.On("event_a", dummyHandler)
 			So(emitter.Listeners("event_a"), ShouldHaveLength, 2)
+		})
+	})
+
+	Convey("Test EventEmitter.PrependListener", t, func() {
+		Convey("Should work in order", func() {
+			emitter := MyEmitter{}
+			var (
+				result []int
+				wg     sync.WaitGroup
+			)
+			listener1 := func(args ...interface{}) {
+				result = append(result, 1)
+				wg.Done()
+			}
+			listener2 := func(args ...interface{}) {
+				result = append(result, 2)
+				wg.Done()
+			}
+			emitter.On("event_a", listener1)
+			emitter.PrependListener("event_a", listener2)
+			wg.Add(2)
+			emitter.Emit("event_a", 20)
+			wg.Wait()
+			So(result, ShouldHaveLength, 2)
+			So(result[0], ShouldEqual, 2)
+			So(result[1], ShouldEqual, 1)
 		})
 	})
 
