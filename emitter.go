@@ -8,8 +8,8 @@ import (
 
 // EventEmitter EventEmitterStruct
 type EventEmitter struct {
-	mutex      sync.Mutex
-	handlerMap map[string][]func(...interface{})
+	mutex       sync.Mutex
+	listenerMap map[string][]func(...interface{})
 }
 
 // AddListener alias for on
@@ -20,20 +20,20 @@ func (emitter *EventEmitter) AddListener(eventName string, listener func(...inte
 // Emit Synchronously calls each of the listeners registered for the event named eventName, in the order they were registered, passing the supplied arguments to each.
 // Returns true if the event had listeners, false otherwise.
 func (emitter *EventEmitter) Emit(eventName string, args ...interface{}) bool {
-	if len(emitter.handlerMap[eventName]) == 0 {
+	if len(emitter.listenerMap[eventName]) == 0 {
 		return false
 	}
 	go func(listerners []func(...interface{})) {
 		for _, listerner := range listerners {
 			listerner(args...)
 		}
-	}(emitter.handlerMap[eventName])
+	}(emitter.listenerMap[eventName])
 	return true
 }
 
 // EventNames Returns events for registered listeners.
 func (emitter *EventEmitter) EventNames() []string {
-	return getHandlerMapKeys(emitter.handlerMap)
+	return getListenerMapKeys(emitter.listenerMap)
 }
 
 // // GetMaxListeners Returns the current max listener value for the EventEmitter which is either set by emitter.setMaxListeners(n) or defaults to EventEmitter.defaultMaxListeners.
@@ -43,13 +43,13 @@ func (emitter *EventEmitter) EventNames() []string {
 
 // ListenerCount Returns the number of listeners listening to the event named eventName.
 func (emitter *EventEmitter) ListenerCount(eventName string) int {
-	return len(emitter.handlerMap[eventName])
+	return len(emitter.listenerMap[eventName])
 }
 
 // Listeners Returns a copy of the array of listeners for the event named eventName.
 func (emitter *EventEmitter) Listeners(eventName string) []func(...interface{}) {
-	listeners := make([]func(...interface{}), len(emitter.handlerMap[eventName]))
-	copy(listeners, emitter.handlerMap[eventName])
+	listeners := make([]func(...interface{}), len(emitter.listenerMap[eventName]))
+	copy(listeners, emitter.listenerMap[eventName])
 	return listeners
 }
 
@@ -85,13 +85,13 @@ func (emitter *EventEmitter) PrependOnceListener(eventName string, listener func
 // Returns a reference to the EventEmitter, so that calls can be chained.
 func (emitter *EventEmitter) RemoveAllListeners(eventNames []string) *EventEmitter {
 	if len(eventNames) == 0 {
-		eventNames = getHandlerMapKeys(emitter.handlerMap)
+		eventNames = getListenerMapKeys(emitter.listenerMap)
 	}
 	for _, eventName := range eventNames {
-		for i := range emitter.handlerMap[eventName] {
-			emitter.handlerMap[eventName][i] = nil
+		for i := range emitter.listenerMap[eventName] {
+			emitter.listenerMap[eventName][i] = nil
 		}
-		delete(emitter.handlerMap, eventName)
+		delete(emitter.listenerMap, eventName)
 	}
 	return emitter
 }
@@ -100,21 +100,21 @@ func (emitter *EventEmitter) RemoveAllListeners(eventNames []string) *EventEmitt
 // removeListener() will remove, at most, one instance of a listener from the listener array.
 // If any single listener has been added multiple times to the listener array for the specified eventName, then removeListener() must be called multiple times to remove each instance.
 func (emitter *EventEmitter) RemoveListener(eventName string, listener func(...interface{})) *EventEmitter {
-	for idx, registredListener := range emitter.handlerMap[eventName] {
+	for idx, registredListener := range emitter.listenerMap[eventName] {
 		registeredFn := getListenerFunc(registredListener)
 		listenerFn := getListenerFunc(listener)
 		if registeredFn == nil || listenerFn == nil {
 			continue
 		}
 		if registeredFn.Entry() == listenerFn.Entry() {
-			emitter.handlerMap[eventName] = deleteFromListeners(emitter.handlerMap[eventName], idx)
+			emitter.listenerMap[eventName] = deleteFromListeners(emitter.listenerMap[eventName], idx)
 			break
 		}
 	}
 	// if there's no listeners under this event, then remove this event from EventEmitter
-	if len(emitter.handlerMap[eventName]) == 0 && emitter.handlerMap[eventName] != nil {
-		emitter.handlerMap[eventName] = nil
-		delete(emitter.handlerMap, eventName)
+	if len(emitter.listenerMap[eventName]) == 0 && emitter.listenerMap[eventName] != nil {
+		emitter.listenerMap[eventName] = nil
+		delete(emitter.listenerMap, eventName)
 	}
 	return emitter
 }
@@ -133,13 +133,13 @@ func (emitter *EventEmitter) addListener(eventName string, listener func(...inte
 	}
 	emitter.mutex.Lock()
 	defer emitter.mutex.Unlock()
-	if emitter.handlerMap == nil {
-		emitter.handlerMap = make(map[string][]func(...interface{}))
+	if emitter.listenerMap == nil {
+		emitter.listenerMap = make(map[string][]func(...interface{}))
 	}
 	if prepend {
-		emitter.handlerMap[eventName] = append([]func(...interface{}){listener}, emitter.handlerMap[eventName]...)
+		emitter.listenerMap[eventName] = append([]func(...interface{}){listener}, emitter.listenerMap[eventName]...)
 	} else {
-		emitter.handlerMap[eventName] = append(emitter.handlerMap[eventName], listener)
+		emitter.listenerMap[eventName] = append(emitter.listenerMap[eventName], listener)
 	}
 	return emitter
 }
@@ -157,13 +157,13 @@ func getListenerFunc(listener func(...interface{})) *runtime.Func {
 	return runtime.FuncForPC(reflect.ValueOf(listener).Pointer())
 }
 
-func getHandlerMapKeys(handlerMap map[string][]func(...interface{})) []string {
-	if len(handlerMap) == 0 {
+func getListenerMapKeys(listenerMap map[string][]func(...interface{})) []string {
+	if len(listenerMap) == 0 {
 		return nil
 	}
-	keys := make([]string, len(handlerMap))
+	keys := make([]string, len(listenerMap))
 	i := 0
-	for k := range handlerMap {
+	for k := range listenerMap {
 		keys[i] = k
 		i++
 	}
