@@ -10,7 +10,6 @@ import (
 type EventEmitter struct {
 	mutex      sync.Mutex
 	handlerMap map[string][]func(...interface{})
-	channelMap map[string]chan []interface{}
 }
 
 // AddListener alias for on
@@ -21,24 +20,24 @@ func (emitter *EventEmitter) AddListener(eventName string, listener func(...inte
 // Emit Synchronously calls each of the listeners registered for the event named eventName, in the order they were registered, passing the supplied arguments to each.
 // Returns true if the event had listeners, false otherwise.
 func (emitter *EventEmitter) Emit(eventName string, args ...interface{}) bool {
-	if _, ok := emitter.channelMap[eventName]; !ok {
-		return false
-	}
 	if len(emitter.handlerMap[eventName]) == 0 {
 		return false
 	}
-	go func() {
-		emitter.channelMap[eventName] <- args
-	}()
+	go func(listerners []func(...interface{})) {
+		for _, listerner := range listerners {
+			listerner(args...)
+		}
+	}(emitter.handlerMap[eventName])
 	return true
 }
 
 // EventNames Returns events for registered listeners.
 func (emitter *EventEmitter) EventNames() []string {
-	eventNames := make([]string, len(emitter.channelMap))
+	eventNames := make([]string, len(emitter.handlerMap))
 	i := 0
-	for k := range emitter.channelMap {
+	for k := range emitter.handlerMap {
 		eventNames[i] = k
+		i++
 	}
 	return eventNames
 }
@@ -71,25 +70,6 @@ func (emitter *EventEmitter) On(eventName string, listener func(...interface{}))
 		emitter.handlerMap = make(map[string][]func(...interface{}))
 	}
 	emitter.handlerMap[eventName] = append(emitter.handlerMap[eventName], listener)
-	if emitter.channelMap == nil {
-		emitter.channelMap = make(map[string]chan []interface{})
-	}
-	if emitter.channelMap[eventName] == nil {
-		emitter.channelMap[eventName] = make(chan []interface{})
-	}
-	go func() {
-		for {
-			select {
-			case args, ok := <-emitter.channelMap[eventName]:
-				if !ok {
-					continue
-				}
-				for _, fn := range emitter.handlerMap[eventName] {
-					fn(args...)
-				}
-			}
-		}
-	}()
 	return emitter
 }
 
@@ -133,13 +113,9 @@ func (emitter *EventEmitter) RemoveListener(eventName string, listener func(...i
 		}
 	}
 	// if there's no listeners under this event, then remove this event from EventEmitter
-	if len(emitter.handlerMap[eventName]) == 0 {
-		if c, ok := emitter.channelMap[eventName]; ok {
-			// clean up
-			close(c)
-			c = nil
-			delete(emitter.channelMap, eventName)
-		}
+	if len(emitter.handlerMap[eventName]) == 0 && emitter.handlerMap[eventName] != nil {
+		emitter.handlerMap[eventName] = nil
+		delete(emitter.handlerMap, eventName)
 	}
 	return emitter
 }

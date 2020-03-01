@@ -35,5 +35,5 @@ Development in progress, plan to implement most is not all of the Node.js's Even
 
 ## TODOs
 
-- [ ] Current implement of event handling will not promise the correct execution of `Emit` called before `removeAllListeners` or `removeListener`, thus a different approach needs to be done
+- [x] Current implement of event handling will not promise the correct execution of `Emit` called before `removeAllListeners` or `removeListener`, thus a different approach needs to be done
 - [ ] Error handling mechanism

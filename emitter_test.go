@@ -82,6 +82,7 @@ func TestEventEmitter(t *testing.T) {
 			dummyHandler := func(...interface{}) {}
 			emitter.On("event_a", dummyHandler)
 			So(emitter.EventNames(), ShouldHaveLength, 1)
+			So(emitter.EventNames(), ShouldContain, "event_a")
 		})
 
 		Convey("Should work with 2 events", func() {
@@ -90,6 +91,8 @@ func TestEventEmitter(t *testing.T) {
 			emitter.On("event_a", dummyHandler)
 			emitter.On("event_b", dummyHandler)
 			So(emitter.EventNames(), ShouldHaveLength, 2)
+			So(emitter.EventNames(), ShouldContain, "event_a")
+			So(emitter.EventNames(), ShouldContain, "event_b")
 		})
 	})
 
